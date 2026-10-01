@@ -1,46 +1,62 @@
-"use client";
+"use client"
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Html5QrcodeResult, Html5QrcodeScanner } from "html5-qrcode";
-import { Html5QrcodeScannerConfig } from "html5-qrcode/esm/html5-qrcode-scanner";
-import Image from "next/image";
-import { useEffect } from "react";
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Html5Qrcode, Html5QrcodeResult } from "html5-qrcode"
+import { Html5QrcodeCameraScanConfig } from "html5-qrcode/esm/html5-qrcode"
+import Image from "next/image"
+import { useEffect, useRef } from "react"
 
 export default function Page() {
-
-  const qrcodeRegionId = "reader"
-  const config: Html5QrcodeScannerConfig = {
-    fps: 10,
-    qrbox: { width: 250, height: 250 },
+  const qrCodeScanner = useRef<Html5Qrcode | null>(null)
+  const qrcodeConfig: { id: string; configs: Html5QrcodeCameraScanConfig } = {
+    id: "reader",
+    configs: {
+      fps: 20,
+      qrbox: { width: 250, height: 250 },
+    },
   }
 
   const onSucess = (decodedText: string, decodedResult: Html5QrcodeResult) => {
-    console.log("Text: ", decodedText);
-    console.log("Result: ", decodedResult);
+    console.log("Text: ", decodedText)
+    console.log("Result: ", decodedResult)
+    if (decodedText) {
+      stopReading()
+    }
   }
 
-  const onError = () => { };
+  const stopReading = () => {
+    qrCodeScanner.current?.stop()
+  }
+
+  const startReading = () => {
+    qrCodeScanner.current?.start(
+      { facingMode: "environment" },
+      qrcodeConfig.configs,
+      onSucess,
+      (error) => console.log("Error: ", error)
+    )
+  }
 
   useEffect(() => {
-    const html5QrcodeScanner = new Html5QrcodeScanner(
-      qrcodeRegionId,
-      config,
-      false
-    )
+    const html5Qrcode = new Html5Qrcode(qrcodeConfig.id)
 
-    html5QrcodeScanner.render(onSucess, onError);
-
-    
+    qrCodeScanner.current = html5Qrcode
 
     return () => {
-      html5QrcodeScanner.clear().catch((error) => {
-        console.error("Failed to clear html5QrcodeScanner. ", error)
-      })
+      if (html5Qrcode.isScanning) {
+        html5Qrcode.stop().then(() => html5Qrcode.clear())
+      }
     }
-  }, []);
+  }, [])
 
   return (
     <main className="flex h-screen w-full items-center justify-center">
@@ -54,7 +70,9 @@ export default function Page() {
             alt=""
           />
           <CardTitle>Leia o Qrcode</CardTitle>
-          <CardDescription>Utilize a câmera do celular para ler as informaçẽos do Qrcode</CardDescription>
+          <CardDescription>
+            Utilize a câmera do celular para ler as informaçẽos do Qrcode
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="flex flex-col items-center gap-6">
@@ -65,7 +83,9 @@ export default function Page() {
               </Field>
               <Field>
                 <FieldLabel>Ler Qrcode</FieldLabel>
-                <div id={qrcodeRegionId} />
+                <div id={qrcodeConfig.id}/>
+                <Button onClick={startReading}>Ler Qrcode</Button>
+                <Button onClick={stopReading}>Parar</Button>
               </Field>
             </FieldGroup>
             <Button className="w-full">Entrar</Button>
