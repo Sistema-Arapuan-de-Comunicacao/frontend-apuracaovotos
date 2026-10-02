@@ -90,7 +90,7 @@ export default function Page() {
   }
 
   const onSuccess = (decodedText: string) => {
-    const qrCodePart = Number(decodedText[8])
+    const qrCodePart = Number(decodedText[5]);
 
     if (!decodedText.startsWith("QRBU") || ![1, 2].includes(qrCodePart)) {
       setFeedback({
