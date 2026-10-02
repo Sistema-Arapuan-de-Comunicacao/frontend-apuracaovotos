@@ -10,26 +10,31 @@ import {
 } from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Html5Qrcode, Html5QrcodeResult } from "html5-qrcode"
 import { Html5QrcodeCameraScanConfig } from "html5-qrcode/esm/html5-qrcode"
 import Image from "next/image"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 export default function Page() {
+  const [qrCodeValue, setQrCodeValue] = useState<string>('');
+  
   const qrCodeScanner = useRef<Html5Qrcode | null>(null)
   const qrcodeConfig: { id: string; configs: Html5QrcodeCameraScanConfig } = {
     id: "reader",
     configs: {
-      fps: 20,
+      fps: 10,
       qrbox: { width: 250, height: 250 },
     },
   }
 
   const onSucess = (decodedText: string, decodedResult: Html5QrcodeResult) => {
-    console.log("Text: ", decodedText)
-    console.log("Result: ", decodedResult)
+    console.log("Text: ", decodedText);
+    console.log("Result: ", decodedResult);
+    setQrCodeValue(decodedText);
+    
     if (decodedText) {
-      stopReading()
+      stopReading();
     }
   }
 
@@ -47,13 +52,13 @@ export default function Page() {
   }
 
   useEffect(() => {
-    const html5Qrcode = new Html5Qrcode(qrcodeConfig.id)
+    const html5Qrcode = new Html5Qrcode(qrcodeConfig.id);
 
-    qrCodeScanner.current = html5Qrcode
+    qrCodeScanner.current = html5Qrcode;
 
     return () => {
       if (html5Qrcode.isScanning) {
-        html5Qrcode.stop().then(() => html5Qrcode.clear())
+        html5Qrcode.stop().then(() => html5Qrcode.clear());
       }
     }
   }, [])
@@ -84,11 +89,14 @@ export default function Page() {
               <Field>
                 <FieldLabel>Ler Qrcode</FieldLabel>
                 <div id={qrcodeConfig.id}/>
-                <Button onClick={startReading}>Ler Qrcode</Button>
-                <Button onClick={stopReading}>Parar</Button>
+                <Button type="button" onClick={startReading}>Ler Qrcode</Button>
+                <Button type="button" onClick={stopReading}>Parar</Button>
+              </Field>
+              <Field>
+                <FieldLabel>Texto do QrCode</FieldLabel>
+                <Textarea value={qrCodeValue} />
               </Field>
             </FieldGroup>
-            <Button className="w-full">Entrar</Button>
           </form>
         </CardContent>
       </Card>
