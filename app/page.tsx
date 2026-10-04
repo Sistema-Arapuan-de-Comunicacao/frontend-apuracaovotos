@@ -290,12 +290,13 @@ export default function Page() {
               </Field>
 
               <div
-                className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm ${feedback.type === "success"
+                className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm ${
+                  feedback.type === "success"
                     ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
                     : feedback.type === "error"
                       ? "border-destructive/20 bg-destructive/5 text-destructive"
                       : "border-border bg-muted/50 text-muted-foreground"
-                  }`}
+                }`}
                 role="status"
                 aria-live="polite"
               >
@@ -385,8 +386,9 @@ export default function Page() {
             >
               {isComplete
                 ? "Enviar apuração"
-                : `Leia ${2 - completedReadings} QR Code${completedReadings === 1 ? "" : "s"
-                }`}
+                : `Leia ${2 - completedReadings} QR Code${
+                    completedReadings === 1 ? "" : "s"
+                  }`}
             </Button>
           </form>
         </CardContent>
