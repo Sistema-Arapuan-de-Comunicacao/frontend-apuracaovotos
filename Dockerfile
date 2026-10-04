@@ -4,6 +4,8 @@ FROM node:22-alpine AS dependencies
 
 WORKDIR /app
 
+RUN apk add --no-cache openssl libc6-compat
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -12,9 +14,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache openssl libc6-compat
-
 ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN apk add --no-cache openssl libc6-compat
 
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
@@ -32,6 +34,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV DATABASE_URL=$DATABASE_URL
+
+RUN apk add --no-cache openssl libc6-compat
 
 COPY --from=builder --chown=node:node /app/package.json /app/package-lock.json ./
 COPY --from=builder --chown=node:node /app/node_modules ./node_modules
