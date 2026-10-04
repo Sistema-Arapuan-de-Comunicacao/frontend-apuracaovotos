@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const idca = parsed.idca || null
     if (!idca) {
       return NextResponse.json(
-        { error: "IDCA/IDUE not found in QR texts" },
+        { error: "IDCA/IDUE não encontrado nos textos do QR" },
         { status: 400 }
       )
     }
@@ -67,27 +67,49 @@ export async function POST(request: Request) {
 
         for (const cargo of parsed.cargos) {
           const cargoObj = cargo as any
-          const codigoCargo = String(
-            cargoObj.codigoCargo ?? 
-            cargoObj.cargo ?? 
-            cargoObj.codigo ?? 
-            cargoObj.carg ?? 
-            cargoObj.idCargo
-          )
+
+          // Extrai o código do cargo cobrindo todas as nomenclaturas comuns do parser do TSE
+          const rawCargo =
+            cargoObj.cdCargo ??
+            cargoObj.cd_cargo ??
+            cargoObj.codigoCargo ??
+            cargoObj.codigo_cargo ??
+            cargoObj.codigo ??
+            cargoObj.carg ??
+            cargoObj.idCargo ??
+            (typeof cargoObj.cargo === "object" ? cargoObj.cargo?.codigo ?? cargoObj.cargo?.id : cargoObj.cargo)
+
+          const cargoStr = String(rawCargo ?? "").trim()
+
+          // Gera variações ("1", "01", "0001") para garantir correspondência com a BD
+          const cargoVariations = Array.from(
+            new Set([
+              cargoStr,
+              cargoStr.replace(/^0+/, ""),
+              cargoStr.padStart(2, "0"),
+              cargoStr.padStart(4, "0"),
+            ])
+          ).filter(Boolean)
 
           for (const voto of cargo.votos) {
             const candidato = await tx.candidatos
               .findFirst({
                 where: {
-                  numero_candidato: voto.numeroCandidato,
+                  numero_candidato: String(voto.numeroCandidato).trim(),
                   cargo: {
-                    codigo_cargo: codigoCargo,
+                    codigo_cargo: {
+                      in: cargoVariations,
+                    },
                   },
                 },
               })
               .catch(() => null)
 
             if (!candidato) {
+              console.warn(
+                `[Aviso] Candidato não encontrado -> Número: ${voto.numeroCandidato}, Cargo QR: "${cargoStr}", Procurado por variações:`,
+                cargoVariations
+              )
               unmatched.push({
                 numeroCandidato: voto.numeroCandidato,
                 numeroPartido: voto.numeroPartido,
@@ -122,7 +144,7 @@ export async function POST(request: Request) {
           body: JSON.stringify({ idca, inserted: result.insertedVotes.length }),
         })
       } catch {
-        // ignore webhook errors
+        // ignora erros de webhook
       }
     }
 
