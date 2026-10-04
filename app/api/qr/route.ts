@@ -34,24 +34,26 @@ export async function POST(request: Request) {
 
     let localVotacaoId: number | null = null
 
-    if (parsed.local) {
-      const lv = await prisma.local_votacao.findFirst({ where: { codigo_local: parsed.local } }).catch(() => null)
-      if (lv) localVotacaoId = lv.id
-    }
+    if (parsed.local && parsed.municipio && parsed.zona) {
+      const lv = await prisma.local_votacao.findFirst({
+        where: {
+          codigo_local: parsed.local,
+          zona: parsed.zona,
+          municipio: {
+            codigo_municipio: parsed.municipio,
+          },
+        },
+      }).catch(() => null)
 
-    if (!localVotacaoId && parsed.municipio && parsed.zona) {
-      const mun = await prisma.municipios.findFirst({ where: { codigo_municipio: parsed.municipio } }).catch(() => null)
-      if (mun) {
-        const lv = await prisma.local_votacao.findFirst({
-          where: { fk_id_municipio: mun.id, zona: parsed.zona },
-        }).catch(() => null)
-        if (lv) localVotacaoId = lv.id
-      }
+      if (lv) localVotacaoId = lv.id
     }
 
     if (!localVotacaoId) {
       return NextResponse.json(
-        { error: "Local de votação não encontrado. Cadastre `local_votacao` primeiro." },
+        {
+          error:
+            "Local de votação não encontrado para o código do local, zona e município informados.",
+        },
         { status: 400 }
       )
     }
