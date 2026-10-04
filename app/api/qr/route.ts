@@ -66,30 +66,22 @@ export async function POST(request: Request) {
         const unmatched: MatchedVote[] = []
 
         for (const cargo of parsed.cargos) {
-          const cargoObj = cargo as any
-
-          // Extrai o código do cargo cobrindo todas as nomenclaturas comuns do parser do TSE
-          const rawCargo =
-            cargoObj.cdCargo ??
-            cargoObj.cd_cargo ??
-            cargoObj.codigoCargo ??
-            cargoObj.codigo_cargo ??
-            cargoObj.codigo ??
-            cargoObj.carg ??
-            cargoObj.idCargo ??
-            (typeof cargoObj.cargo === "object" ? cargoObj.cargo?.codigo ?? cargoObj.cargo?.id : cargoObj.cargo)
-
-          const cargoStr = String(rawCargo ?? "").trim()
+          const cargoStr = cargo.codigoCargo
 
           // Gera variações ("1", "01", "0001") para garantir correspondência com a BD
           const cargoVariations = Array.from(
             new Set([
               cargoStr,
-              cargoStr.replace(/^0+/, ""),
               cargoStr.padStart(2, "0"),
               cargoStr.padStart(4, "0"),
             ])
           ).filter(Boolean)
+
+          // Padroniza o código cadastrado, preservando os IDs e vínculos dos candidatos.
+          await tx.cargos.updateMany({
+            where: { codigo_cargo: { in: cargoVariations, not: cargoStr } },
+            data: { codigo_cargo: cargoStr },
+          })
 
           for (const voto of cargo.votos) {
             const candidato = await tx.candidatos
@@ -97,9 +89,7 @@ export async function POST(request: Request) {
                 where: {
                   numero_candidato: String(voto.numeroCandidato).trim(),
                   cargo: {
-                    codigo_cargo: {
-                      in: cargoVariations,
-                    },
+                    codigo_cargo: cargoStr,
                   },
                 },
               })
@@ -135,18 +125,18 @@ export async function POST(request: Request) {
       }
     )
 
-    const webhook = process.env.WEBHOOK_URL
-    if (webhook) {
-      try {
-        void fetch(webhook, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idca, inserted: result.insertedVotes.length }),
-        })
-      } catch {
-        // ignora erros de webhook
-      }
-    }
+    // const webhook = process.env.WEBHOOK_URL
+    // if (webhook) {
+    //   try {
+    //     void fetch(webhook, {
+    //       method: "POST",
+    //       headers: { "Content-Type": "application/json" },
+    //       body: JSON.stringify({ idca, inserted: result.insertedVotes.length }),
+    //     })
+    //   } catch {
+    //     // ignora erros de webhook
+    //   }
+    // }
 
     return NextResponse.json({
       ok: true,

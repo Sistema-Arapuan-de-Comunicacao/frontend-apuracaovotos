@@ -119,7 +119,7 @@ function parseTokens(tokens: string[]): ParsedBoletim {
     } else if (key === "IDCA") {
       result.idca = value
     } else if (key === "CARG") {
-      cargoAtual = { codigoCargo: value, votos: [] }
+      cargoAtual = { codigoCargo: value.replace(/^0+(?=\d)/, ""), votos: [] }
       result.cargos.push(cargoAtual)
       partidoAtual = ""
     } else if (key === "PART") {

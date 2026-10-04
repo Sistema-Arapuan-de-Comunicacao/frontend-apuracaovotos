@@ -31,9 +31,12 @@ export async function GET() {
 
     for (const cargo of parsed.cargos) {
       for (const voto of cargo.votos) {
-        // Try to find candidato by numero_candidato
+        // Match candidato by numero_candidato and the CARG code from the QR
         const candidato = await prisma.candidatos.findFirst({
-          where: { numero_candidato: voto.numeroCandidato },
+          where: {
+            numero_candidato: voto.numeroCandidato,
+            cargo: { codigo_cargo: cargo.codigoCargo },
+          },
         })
 
         if (!candidato) {
