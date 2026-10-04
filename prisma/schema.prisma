@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model cargos {
+  id           Int     @id @default(autoincrement())
+  codigo_cargo String
+  nome_cargo   String
+  candidatos   candidatos[]
+}
+
+model municipios {
+  id               Int             @id @default(autoincrement())
+  codigo_municipio String
+  nome_municipio   String
+  local_votacao    local_votacao[]
+}
+
+model candidatos {
+  id                 Int      @id @default(autoincrement())
+  nome_partido       String
+  numero_candidato   String?  // optional: some DBs may have it
+  nome_candidato     String
+  nome_urna_candidato String
+  fk_idcargo         Int?
+  cargo              cargos?  @relation(fields: [fk_idcargo], references: [id])
+  votos              votos[]
+}
+
+model local_votacao {
+  id             Int     @id @default(autoincrement())
+  zona           Int
+  fk_id_municipio Int
+  codigo_local   String
+  local_votacao  String
+  municipio      municipios @relation(fields: [fk_id_municipio], references: [id])
+  votos          votos[]
+}
+
+model votos {
+  id                 Int    @id @default(autoincrement())
+  numero_partido     String
+  fk_idcandidato     Int
+  qtd_votos          Int
+  fk_idlocal_votacao Int
+  candidato          candidatos @relation(fields: [fk_idcandidato], references: [id])
+  localVotacao       local_votacao @relation(fields: [fk_idlocal_votacao], references: [id])
+}
+
+// internal table to track processed boletins and avoid duplicates
+model boletins {
+  id       Int    @id @default(autoincrement())
+  idca     String @unique
+  raw      String
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:18.6-alpine
+    container_name: apuracao_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: apuracao@123
+      POSTGRES_DB: apuracao_votos
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_apuracao_votos:/var/lib/postgresql/
+
+volumes:
+  db_apuracao_votos:
+    driver: local

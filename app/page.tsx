@@ -349,7 +349,41 @@ export default function Page() {
               </Field>
             </FieldGroup>
 
-            <Button type="submit" size="lg" disabled={!isComplete}>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={!isComplete}
+              onClick={async () => {
+                if (!isComplete) return
+
+                setFeedback({ type: "info", message: "Enviando apuração…" })
+
+                try {
+                  const res = await fetch("/api/qr", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ qr1: qrCodeValue[0], qr2: qrCodeValue[1] }),
+                  })
+
+                  if (res.status === 409) {
+                    const data = await res.json()
+                    setFeedback({ type: "error", message: data.message || "Boletim já lido." })
+                    return
+                  }
+
+                  const data = await res.json()
+                  if (!res.ok) {
+                    setFeedback({ type: "error", message: data.error || "Erro ao enviar." })
+                    return
+                  }
+
+                  setFeedback({ type: "success", message: `Enviado: ${data.inserted} votos registrados.` })
+                  clearQrCodeValue()
+                } catch (e) {
+                  setFeedback({ type: "error", message: "Erro de rede ao enviar." })
+                }
+              }}
+            >
               {isComplete
                 ? "Enviar apuração"
                 : `Leia ${2 - completedReadings} QR Code${
