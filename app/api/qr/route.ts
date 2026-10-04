@@ -66,52 +66,48 @@ export async function POST(request: Request) {
         const unmatched: MatchedVote[] = []
 
         for (const cargo of parsed.cargos) {
-  // Converte para 'any' para ignorar restrições de tipagem e busca a propriedade correta
-  const cargoObj = cargo as any
-  const codigoCargo = String(
-    cargoObj.codigoCargo ?? 
-    cargoObj.cargo ?? 
-    cargoObj.codigo ?? 
-    cargoObj.carg ?? 
-    cargoObj.idCargo
-  )
+          const cargoObj = cargo as any
+          const codigoCargo = String(
+            cargoObj.codigoCargo ?? 
+            cargoObj.cargo ?? 
+            cargoObj.codigo ?? 
+            cargoObj.carg ?? 
+            cargoObj.idCargo
+          )
 
-  // Descomente a linha abaixo no terminal para inspecionar o objeto caso precise verificar a estrutura exata:
-  // console.log("Objeto Cargo:", cargo)
+          for (const voto of cargo.votos) {
+            const candidato = await tx.candidatos
+              .findFirst({
+                where: {
+                  numero_candidato: voto.numeroCandidato,
+                  cargo: {
+                    codigo_cargo: codigoCargo,
+                  },
+                },
+              })
+              .catch(() => null)
 
-  for (const voto of cargo.votos) {
-    const candidato = await tx.candidatos
-      .findFirst({
-        where: {
-          numero_candidato: voto.numeroCandidato,
-          cargos: {
-            codigo_cargo: codigoCargo,
-          },
-        },
-      })
-      .catch(() => null)
+            if (!candidato) {
+              unmatched.push({
+                numeroCandidato: voto.numeroCandidato,
+                numeroPartido: voto.numeroPartido,
+                qtdVotos: voto.qtdVotos,
+              })
+              continue
+            }
 
-    if (!candidato) {
-      unmatched.push({
-        numeroCandidato: voto.numeroCandidato,
-        numeroPartido: voto.numeroPartido,
-        qtdVotos: voto.qtdVotos,
-      })
-      continue
-    }
+            const vote = await tx.votos.create({
+              data: {
+                numero_partido: voto.numeroPartido,
+                fk_idcandidato: candidato.id,
+                qtd_votos: voto.qtdVotos,
+                fk_idlocal_votacao: localVotacaoId,
+              },
+            })
 
-    const vote = await tx.votos.create({
-      data: {
-        numero_partido: voto.numeroPartido,
-        fk_idcandidato: candidato.id,
-        qtd_votos: voto.qtdVotos,
-        fk_idlocal_votacao: localVotacaoId,
-      },
-    })
-
-    insertedVotes.push(vote)
-  }
-}
+            insertedVotes.push(vote)
+          }
+        }
 
         return { insertedVotes, unmatched }
       }
