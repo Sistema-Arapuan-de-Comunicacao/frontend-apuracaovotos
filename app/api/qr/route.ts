@@ -66,10 +66,19 @@ export async function POST(request: Request) {
         const unmatched: MatchedVote[] = []
 
         for (const cargo of parsed.cargos) {
+          // Extrai o código do cargo atual do QR (ex: "1" para Presidente, "3" para Governador)
+          const codigoCargo = String(cargo.codigoCargo ?? cargo.cargo ?? cargo.codigo)
+
           for (const voto of cargo.votos) {
+            // Valida o número do candidato E o cargo ao qual ele pertence
             const candidato = await tx.candidatos
               .findFirst({
-                where: { numero_candidato: voto.numeroCandidato },
+                where: {
+                  numero_candidato: voto.numeroCandidato,
+                  cargos: {
+                    codigo_cargo: codigoCargo,
+                  },
+                },
               })
               .catch(() => null)
 
