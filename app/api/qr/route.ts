@@ -66,60 +66,69 @@ export async function POST(request: Request) {
         const unmatched: MatchedVote[] = []
 
         for (const cargo of parsed.cargos) {
-          // Extrai o código do cargo atual do QR (ex: "1" para Presidente, "3" para Governador)
-          const codigoCargo = String(cargo.codigoCargo ?? cargo.cargo ?? cargo.codigo)
+  // Converte para 'any' para ignorar restrições de tipagem e busca a propriedade correta
+  const cargoObj = cargo as any
+  const codigoCargo = String(
+    cargoObj.codigoCargo ?? 
+    cargoObj.cargo ?? 
+    cargoObj.codigo ?? 
+    cargoObj.carg ?? 
+    cargoObj.idCargo
+  )
 
-          for (const voto of cargo.votos) {
-            // Valida o número do candidato E o cargo ao qual ele pertence
-            const candidato = await tx.candidatos
-              .findFirst({
-                where: {
-                  numero_candidato: voto.numeroCandidato,
-                  cargos: {
-                    codigo_cargo: codigoCargo,
-                  },
-                },
-              })
-              .catch(() => null)
+  // Descomente a linha abaixo no terminal para inspecionar o objeto caso precise verificar a estrutura exata:
+  // console.log("Objeto Cargo:", cargo)
 
-            if (!candidato) {
-              unmatched.push({
-                numeroCandidato: voto.numeroCandidato,
-                numeroPartido: voto.numeroPartido,
-                qtdVotos: voto.qtdVotos,
-              })
-              continue
-            }
+  for (const voto of cargo.votos) {
+    const candidato = await tx.candidatos
+      .findFirst({
+        where: {
+          numero_candidato: voto.numeroCandidato,
+          cargos: {
+            codigo_cargo: codigoCargo,
+          },
+        },
+      })
+      .catch(() => null)
 
-            const vote = await tx.votos.create({
-              data: {
-                numero_partido: voto.numeroPartido,
-                fk_idcandidato: candidato.id,
-                qtd_votos: voto.qtdVotos,
-                fk_idlocal_votacao: localVotacaoId,
-              },
-            })
+    if (!candidato) {
+      unmatched.push({
+        numeroCandidato: voto.numeroCandidato,
+        numeroPartido: voto.numeroPartido,
+        qtdVotos: voto.qtdVotos,
+      })
+      continue
+    }
 
-            insertedVotes.push(vote)
-          }
-        }
+    const vote = await tx.votos.create({
+      data: {
+        numero_partido: voto.numeroPartido,
+        fk_idcandidato: candidato.id,
+        qtd_votos: voto.qtdVotos,
+        fk_idlocal_votacao: localVotacaoId,
+      },
+    })
+
+    insertedVotes.push(vote)
+  }
+}
 
         return { insertedVotes, unmatched }
       }
     )
 
-    // const webhook = process.env.WEBHOOK_URL
-    // if (webhook) {
-    //   try {
-    //     void fetch(webhook, {
-    //       method: "POST",
-    //       headers: { "Content-Type": "application/json" },
-    //       body: JSON.stringify({ idca, inserted: result.insertedVotes.length }),
-    //     })
-    //   } catch {
-    //     // ignore webhook errors
-    //   }
-    // }
+    const webhook = process.env.WEBHOOK_URL
+    if (webhook) {
+      try {
+        void fetch(webhook, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idca, inserted: result.insertedVotes.length }),
+        })
+      } catch {
+        // ignore webhook errors
+      }
+    }
 
     return NextResponse.json({
       ok: true,
