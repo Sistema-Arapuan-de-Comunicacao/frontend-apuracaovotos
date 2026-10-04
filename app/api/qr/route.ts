@@ -99,18 +99,18 @@ export async function POST(request: Request) {
       }
     )
 
-    const webhook = process.env.WEBHOOK_URL
-    if (webhook) {
-      try {
-        void fetch(webhook, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idca, inserted: result.insertedVotes.length }),
-        })
-      } catch {
-        // ignore webhook errors
-      }
-    }
+    // const webhook = process.env.WEBHOOK_URL
+    // if (webhook) {
+    //   try {
+    //     void fetch(webhook, {
+    //       method: "POST",
+    //       headers: { "Content-Type": "application/json" },
+    //       body: JSON.stringify({ idca, inserted: result.insertedVotes.length }),
+    //     })
+    //   } catch {
+    //     // ignore webhook errors
+    //   }
+    // }
 
     return NextResponse.json({
       ok: true,
