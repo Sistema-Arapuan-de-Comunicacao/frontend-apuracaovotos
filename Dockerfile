@@ -17,6 +17,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 
+RUN npx prisma generate
 RUN npm run build
 RUN npm prune --omit=dev
 
