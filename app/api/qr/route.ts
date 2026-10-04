@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import prisma from "@/lib/prisma"
 import { parseQrTexts } from "@/lib/qr"
 
 type Body = {
   qr1: string
   qr2: string
+}
+
+type MatchedVote = {
+  numeroCandidato: string
+  numeroPartido: string
+  qtdVotos: number
 }
 
 export async function POST(request: Request) {
@@ -49,46 +56,48 @@ export async function POST(request: Request) {
       )
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      await tx.boletins.create({
-        data: { idca, raw: JSON.stringify(parsed) },
-      })
+    const result: { insertedVotes: any[]; unmatched: MatchedVote[] } = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        await tx.boletins.create({
+          data: { idca, raw: JSON.stringify(parsed) },
+        })
 
-      const insertedVotes: any[] = []
-      const unmatched: Array<{ numeroCandidato: string; numeroPartido: string; qtdVotos: number }> = []
+        const insertedVotes: any[] = []
+        const unmatched: MatchedVote[] = []
 
-      for (const cargo of parsed.cargos) {
-        for (const voto of cargo.votos) {
-          const candidato = await tx.candidatos
-            .findFirst({
-              where: { numero_candidato: voto.numeroCandidato },
+        for (const cargo of parsed.cargos) {
+          for (const voto of cargo.votos) {
+            const candidato = await tx.candidatos
+              .findFirst({
+                where: { numero_candidato: voto.numeroCandidato },
+              })
+              .catch(() => null)
+
+            if (!candidato) {
+              unmatched.push({
+                numeroCandidato: voto.numeroCandidato,
+                numeroPartido: voto.numeroPartido,
+                qtdVotos: voto.qtdVotos,
+              })
+              continue
+            }
+
+            const vote = await tx.votos.create({
+              data: {
+                numero_partido: voto.numeroPartido,
+                fk_idcandidato: candidato.id,
+                qtd_votos: voto.qtdVotos,
+                fk_idlocal_votacao: localVotacaoId,
+              },
             })
-            .catch(() => null)
 
-          if (!candidato) {
-            unmatched.push({
-              numeroCandidato: voto.numeroCandidato,
-              numeroPartido: voto.numeroPartido,
-              qtdVotos: voto.qtdVotos,
-            })
-            continue
+            insertedVotes.push(vote)
           }
-
-          const vote = await tx.votos.create({
-            data: {
-              numero_partido: voto.numeroPartido,
-              fk_idcandidato: candidato.id,
-              qtd_votos: voto.qtdVotos,
-              fk_idlocal_votacao: localVotacaoId,
-            },
-          })
-
-          insertedVotes.push(vote)
         }
-      }
 
-      return { insertedVotes, unmatched }
-    })
+        return { insertedVotes, unmatched }
+      }
+    )
 
     const webhook = process.env.WEBHOOK_URL
     if (webhook) {
@@ -106,7 +115,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       inserted: result.insertedVotes.length,
-      unmatched: result.unmatched.map((item) => `${item.numeroCandidato}:${item.qtdVotos} (partido ${item.numeroPartido})`),
+      unmatched: result.unmatched.map(
+        (item: MatchedVote) => `${item.numeroCandidato}:${item.qtdVotos} (partido ${item.numeroPartido})`
+      ),
     })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
